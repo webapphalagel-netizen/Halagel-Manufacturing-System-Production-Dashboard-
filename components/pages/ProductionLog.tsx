@@ -3,9 +3,9 @@ import { StorageService } from '../../services/storageService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { CATEGORIES, PROCESSES } from '../../constants';
-import { ProductionEntry, ProductionStatus } from '../../types';
-import { Trash2, Download, Calendar, List, Filter, XCircle, Palmtree, BarChart2, MessageSquare, ArrowUpDown, Clock, CheckCircle, ShieldAlert } from 'lucide-react';
-import { getTodayISO, isWeeklyRestDay } from '../../utils/dateUtils';
+import { ProductionEntry, ProductionStatus, OffDayType } from '../../types';
+import { Trash2, Download, Calendar, List, Filter, XCircle, Palmtree, BarChart2, MessageSquare, ArrowUpDown, Clock, CheckCircle, ShieldAlert, Coffee, Ban } from 'lucide-react';
+import { getTodayISO, isWeeklyRestDay, getWeeklyOffDayType } from '../../utils/dateUtils';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
   ResponsiveContainer, LineChart, Line, AreaChart, Area, ComposedChart,
@@ -270,15 +270,31 @@ export const ProductionLog: React.FC = () => {
               {viewMode === 'daily' ? (
                   filteredData.map(entry => {
                     const eff = Number(calculateEfficiency(entry.actualQuantity || 0, entry.planQuantity || 0));
-                    const isHol = offDays.some(od => od.date === entry.date);
-                    const isRest = isWeeklyRestDay(entry.date);
+                    
+                    // Priority 1: Manual Holiday check
+                    const manualOffDay = offDays.find(od => od.date === entry.date);
+                    // Priority 2: Automatic Weekly check
+                    const autoOffType = getWeeklyOffDayType(entry.date || '');
+                    
+                    const labelType = manualOffDay?.type || autoOffType;
+                    const labelDesc = manualOffDay?.description || (autoOffType === 'Rest Day' ? 'Weekly Rest' : 'Weekly Off');
+
                     return (
-                      <tr key={entry.id} className={`hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors ${(isHol || isRest) ? 'bg-amber-50/10' : ''}`}>
+                      <tr key={entry.id} className={`hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors ${labelType ? 'bg-amber-50/10' : ''}`}>
                         <td className="px-8 py-6">
                             <div className="font-black text-slate-800 dark:text-white font-mono text-xs">{entry.date}</div>
-                            {isHol ? <span className="flex items-center gap-1.5 text-[9px] font-black uppercase text-amber-600"><Palmtree className="w-3 h-3" /> Holiday</span> 
-                             : isRest ? <span className="flex items-center gap-1.5 text-[9px] font-black uppercase text-indigo-500"><ShieldAlert className="w-3 h-3" /> Rest Day</span>
-                             : <span className="text-[9px] font-black uppercase text-slate-300">Operational</span>}
+                            {labelType ? (
+                              <span className={`flex items-center gap-1.5 text-[9px] font-black uppercase ${
+                                labelType === 'Public Holiday' ? 'text-rose-500' : 
+                                labelType === 'Rest Day' ? 'text-indigo-500' : 'text-amber-500'
+                              }`}>
+                                {labelType === 'Public Holiday' ? <Palmtree className="w-3 h-3" /> : 
+                                 labelType === 'Rest Day' ? <Coffee className="w-3 h-3" /> : <Ban className="w-3 h-3" />}
+                                {labelDesc}
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-black uppercase text-slate-300">Operational</span>
+                            )}
                         </td>
                         <td className="px-8 py-6 text-center">
                           <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-900 text-slate-500 border dark:border-slate-800">{entry.category}</span>
