@@ -1,8 +1,7 @@
-
 import React, { useMemo, useState } from 'react';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { StorageService } from '../../services/storageService';
-import { ProductionEntry, OffDay, ProductionStatus } from '../../types';
+import { ProductionEntry, OffDay, ProductionStatus, OffDayType } from '../../types';
 import { PROCESSES } from '../../constants';
 import { 
   ClipboardList, List, Calendar, 
@@ -10,7 +9,7 @@ import {
   Palmtree, MessageSquare, ArrowUpDown, Clock, CheckCircle, ShieldAlert, Coffee, Ban
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { formatDisplayDate, getCurrentMonthISO } from '../../utils/dateUtils';
+import { formatDisplayDate, getCurrentMonthISO, getWeeklyOffDayType } from '../../utils/dateUtils';
 
 type SortConfig = {
     key: keyof ProductionEntry;
@@ -82,16 +81,19 @@ export const Dashboard: React.FC = () => {
     const filteredEntries = baseData.filter(d => d && d.date && d.date.trim().startsWith(selectedMonth));
     const dates = new Set<string>();
     
-    // gather dates that have entries or are off days
+    // 1. Add dates that have production entries
     filteredEntries.forEach(e => {
         if (e.date) dates.add(e.date.trim().substring(0, 10));
     });
     
+    // 2. Add manual off days (holidays etc)
     offDays.forEach(od => {
         if (od.date && od.date.trim().startsWith(selectedMonth)) {
             dates.add(od.date.trim().substring(0, 10));
         }
     });
+
+    // NOTE: Loop that auto-injected every Fri/Sat has been removed.
 
     const sortedDates = Array.from(dates).sort((a, b) => (b || '').localeCompare(a || ''));
     const statusWeight: Record<string, number> = { 'In Progress': 1, 'Completed': 2 };
@@ -113,7 +115,23 @@ export const Dashboard: React.FC = () => {
             });
         }
 
-        const offDayInfo = offDays.find(od => od.date && od.date.trim().substring(0, 10) === dateKey);
+        // Manual holiday check takes priority
+        let offDayInfo = offDays.find(od => od.date && od.date.trim().substring(0, 10) === dateKey);
+        
+        // Automatic Friday/Saturday check only for days where data exists
+        if (!offDayInfo) {
+           const autoType = getWeeklyOffDayType(dateKey);
+           if (autoType) {
+               offDayInfo = {
+                   id: `auto-${dateKey}`,
+                   date: dateKey,
+                   type: autoType,
+                   description: autoType === 'Rest Day' ? 'Friday Weekly Rest' : 'Saturday Weekly Off',
+                   createdBy: 'System'
+               };
+           }
+        }
+
         const totalActualForDate = entriesForDate.reduce((sum, entry) => sum + (entry.actualQuantity || 0), 0);
         
         return {
@@ -162,7 +180,6 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  // Fixed SortHeader by adding missing </th> closing tag
   const SortHeader = ({ label, sortKey }: { label: string, sortKey: keyof ProductionEntry }) => (
     <th className="px-8 py-4 cursor-pointer group" onClick={() => handleSort(sortKey)}>
         <div className="flex items-center gap-1">
