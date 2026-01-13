@@ -1,7 +1,7 @@
-import { User, ProductionEntry, OffDay, ActivityLog, UnitType, ProductionStatus, OffDayType } from '../types';
-import { INITIAL_USERS, INITIAL_OFF_DAYS, generateSeedProductionData, UNITS } from '../constants';
-import { GoogleSheetsService } from './googleSheetsService';
-import { getDbTimestamp } from '../utils/dateUtils';
+import { User, ProductionEntry, OffDay, ActivityLog, UnitType, ProductionStatus, OffDayType } from './types';
+import { INITIAL_USERS, INITIAL_OFF_DAYS, generateSeedProductionData, UNITS } from './constants';
+import { GoogleSheetsService } from './services/googleSheetsService';
+import { getDbTimestamp } from './utils/dateUtils';
 
 const KEYS = {
   USERS: 'halagel_users',
@@ -27,7 +27,6 @@ const normalizeProduction = (data: any): ProductionEntry => {
   
   // If data comes from Google Sheets as an array
   if (Array.isArray(data)) {
-    const actualQty = Number(data[6] || 0);
     entry = {
       id: String(data[0] || Date.now()),
       date: String(data[1] || '').split(' ')[0],
@@ -35,7 +34,7 @@ const normalizeProduction = (data: any): ProductionEntry => {
       process: String(data[3] || 'Mixing') as any,
       productName: String(data[4] || 'Unknown'),
       planQuantity: Number(data[5] || 0),
-      actualQuantity: actualQty,
+      actualQuantity: Number(data[6] || 0),
       unit: normalizeUnit(data[7]), // Column H
       batchNo: String(data[8] || ''),
       manpower: Number(data[9] || 0),
@@ -44,19 +43,17 @@ const normalizeProduction = (data: any): ProductionEntry => {
       remark: String(data[12] || ''),
       planRemark: String(data[13] || ''),
       actualRemark: String(data[14] || ''),
-      // Rule: If actual submitted, it's completed. Otherwise in progress.
-      status: (data[15] as ProductionStatus) || (actualQty > 0 ? 'Completed' : 'In Progress')
+      status: (data[15] as ProductionStatus) || (Number(data[6] || 0) >= Number(data[5] || 1) ? 'Completed' : 'In Progress')
     };
   } else {
     // If data comes from LocalStorage as an object
-    const actualQty = Number(data.actualQuantity || 0);
     entry = {
       ...data,
       id: String(data.id || Date.now()),
       date: String(data.date || '').split(' ')[0],
       productName: String(data.productName || 'Unknown'),
       planQuantity: Number(data.planQuantity || 0),
-      actualQuantity: actualQty,
+      actualQuantity: Number(data.actualQuantity || 0),
       unit: normalizeUnit(data.unit),
       manpower: Number(data.manpower || 0),
       batchNo: String(data.batchNo || ''),
@@ -65,8 +62,7 @@ const normalizeProduction = (data: any): ProductionEntry => {
       actualRemark: String(data.actualRemark || ''),
       process: String(data.process || 'Mixing') as any,
       category: String(data.category || 'Healthcare') as any,
-      // Rule: If actual submitted, it's completed. Otherwise in progress.
-      status: actualQty > 0 ? 'Completed' : 'In Progress',
+      status: data.status || (Number(data.actualQuantity || 0) >= Number(data.planQuantity || 1) ? 'Completed' : 'In Progress'),
       updatedAt: String(data.updatedAt || getDbTimestamp())
     };
   }
@@ -128,7 +124,7 @@ const init = () => {
   if (!localStorage.getItem(KEYS.PRODUCTION)) {
     const seed = generateSeedProductionData().map((p: ProductionEntry) => ({
       ...p,
-      status: p.actualQuantity > 0 ? 'Completed' : 'In Progress'
+      status: p.actualQuantity >= p.planQuantity ? 'Completed' : 'In Progress'
     }));
     localStorage.setItem(KEYS.PRODUCTION, JSON.stringify(seed));
   }
