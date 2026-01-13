@@ -1,8 +1,9 @@
-
 /**
  * HALAGEL DATE UTILITIES
  * Strictly enforces Malaysia Time (UTC+8) to prevent the "Yesterday Bug".
  */
+
+import { OffDayType } from "../types";
 
 /**
  * Returns YYYY-MM-DD based on Malaysia Timezone.
@@ -18,22 +19,29 @@ export const getTodayISO = (): string => {
 };
 
 /**
- * Checks if a given date string is a weekly rest day (Saturday or Sunday).
+ * Checks if a given date string is a weekly rest day (Friday or Saturday).
  */
 export const isWeeklyRestDay = (dateStr: string): boolean => {
-  if (!dateStr) return false;
-  const cleanDate = dateStr.split(' ')[0].split('T')[0];
-  const parts = cleanDate.split('-');
+  const parts = dateStr.split(' ')[0].split('-');
   if (parts.length !== 3) return false;
+  // Use UTC-8 relative date construction
+  const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  const day = d.getDay();
+  return day === 5 || day === 6;
+};
 
-  const year = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10);
-  const day = parseInt(parts[2], 10);
-  
-  // Use noon to avoid timezone flip
-  const d = new Date(year, month - 1, day, 12, 0, 0);
-  const dayOfWeek = d.getDay(); // 0 = Sun, 6 = Sat
-  return dayOfWeek === 0 || dayOfWeek === 6;
+/**
+ * Returns the automatic type for a day of the week.
+ * Friday = Rest Day, Saturday = Off Day.
+ */
+export const getWeeklyOffDayType = (dateStr: string): OffDayType | null => {
+  const parts = dateStr.split(' ')[0].split('-');
+  if (parts.length !== 3) return null;
+  const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  const day = d.getDay();
+  if (day === 5) return 'Rest Day';
+  if (day === 6) return 'Off Day';
+  return null;
 };
 
 /**
