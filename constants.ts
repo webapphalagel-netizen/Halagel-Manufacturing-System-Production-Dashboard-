@@ -1,4 +1,3 @@
-
 import { User, ProductionEntry, OffDay, OffDayType } from './types';
 import { getTodayISO, getDbTimestamp } from './utils/dateUtils';
 
@@ -7,8 +6,8 @@ export const PROCESSES = ['Mixing', 'Encapsulation', 'Filling', 'Sorting', 'Pack
 export const UNITS = ['KG', 'PCS', 'CARTON', 'BTL', 'BOX', 'PAX', 'TUBE'] as const;
 export const OFF_DAY_TYPES: OffDayType[] = ['Public Holiday', 'Rest Day', 'Off Day'];
 
-// Helper for weekend identification
-export const WEEKLY_OFF_DAYS = [0, 6]; 
+// Friday (5) is Rest Day, Saturday (6) is Off Day
+export const WEEKLY_OFF_DAYS: number[] = [5, 6]; 
 
 export const DEFAULT_AVATARS = {
   MAN: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
@@ -28,46 +27,5 @@ export const INITIAL_OFF_DAYS: OffDay[] = [
 ];
 
 export const generateSeedProductionData = (): ProductionEntry[] => {
-  const data: ProductionEntry[] = [];
-  const products = ['Pain Relief Gel', 'Minty Fresh', 'Pink Salt Fine', 'Vitamin C', 'Charcoal Paste', 'Herbal Shampoo', 'Skin Repair Cream'];
-  
-  const todayStr = getTodayISO();
-  const [y, m, d] = todayStr.split('-').map(Number);
-  const baseDate = new Date(y, m - 1, d);
-
-  for (let i = 0; i < 30; i++) {
-    const d = new Date(baseDate);
-    d.setDate(baseDate.getDate() - i);
-    
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-    // Skip weekly off days for seed data generation
-    if (WEEKLY_OFF_DAYS.includes(d.getDay())) continue;
-
-    products.forEach((prod, idx) => {
-      if (Math.random() > 0.8) return;
-
-      const plan = Math.floor(Math.random() * 500) + 500;
-      const actual = Math.floor(plan * (0.8 + Math.random() * 0.2));
-
-      data.push({
-        id: `seed-${i}-${idx}`,
-        date: dateStr,
-        category: CATEGORIES[idx % CATEGORIES.length],
-        process: PROCESSES[idx % PROCESSES.length],
-        productName: prod,
-        planQuantity: plan,
-        actualQuantity: actual,
-        unit: UNITS[idx % UNITS.length],
-        batchNo: `B-${dateStr.replace(/-/g, '')}-${idx}`,
-        manpower: Math.floor(Math.random() * 5) + 3.5,
-        planRemark: 'Standard monthly batch',
-        actualRemark: actual < plan ? 'Machine maintenance slowdown' : 'Optimal output achieved',
-        status: actual >= plan ? 'Completed' : 'In Progress',
-        lastUpdatedBy: 'u1',
-        updatedAt: getDbTimestamp()
-      });
-    });
-  }
-  return data;
+  return []; // Explicitly empty as requested by user previously
 };
