@@ -21,7 +21,6 @@ export const UserManagement: React.FC = () => {
   const [newUser, setNewUser] = useState<Omit<User, 'id'>>({
       name: '',
       username: '',
-      email: '',
       role: 'operator',
       password: ''
   });
@@ -54,7 +53,7 @@ export const UserManagement: React.FC = () => {
         detail: { message: `NEW USER CREATED: ${u.name.toUpperCase()}`, type: 'success' } 
     }));
     setIsAdding(false);
-    setNewUser({ name: '', username: '', email: '', role: 'operator', password: '' });
+    setNewUser({ name: '', username: '', role: 'operator', password: '' });
   };
 
   const handleDelete = (id: string) => {
@@ -136,10 +135,6 @@ export const UserManagement: React.FC = () => {
                         <input type="text" required className="w-full border dark:border-slate-600 dark:bg-slate-900 p-2.5 rounded-xl outline-none dark:text-white font-bold" value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Email</label>
-                        <input type="email" required className="w-full border dark:border-slate-600 dark:bg-slate-900 p-2.5 rounded-xl outline-none dark:text-white font-bold" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
-                    </div>
-                    <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Initial Password</label>
                         <input type="text" required className="w-full border dark:border-slate-600 dark:bg-slate-900 p-2.5 rounded-xl outline-none dark:text-white font-bold" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
                     </div>
@@ -164,7 +159,6 @@ export const UserManagement: React.FC = () => {
                 <thead className="bg-gray-50 dark:bg-slate-900 text-gray-700 dark:text-slate-200 border-b dark:border-slate-700 uppercase font-bold text-[10px] tracking-widest">
                     <tr>
                         <th className="px-8 py-5">Staff Member</th>
-                        <th className="px-8 py-5">Email</th>
                         <th className="px-8 py-5 text-center">Permissions</th>
                         <th className="px-8 py-5 text-right">Control</th>
                     </tr>
@@ -176,7 +170,6 @@ export const UserManagement: React.FC = () => {
                                 <div className="font-black text-slate-800 dark:text-white">{u.name}</div>
                                 <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-mono font-bold tracking-tighter">@{u.username}</div>
                             </td>
-                            <td className="px-8 py-6 text-slate-500 dark:text-gray-400 font-medium">{u.email}</td>
                             <td className="px-8 py-6 text-center">
                                 <span className="bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg text-[9px] uppercase font-black tracking-[0.1em] text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50">
                                     {u.role === 'manager' ? 'manager/hod' : u.role}
