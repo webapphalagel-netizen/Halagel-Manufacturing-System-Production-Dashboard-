@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 export const UserModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>(StorageService.getUsers());
-  const [newUser, setNewUser] = useState({ name: '', username: '', email: '', password: '', role: 'operator' as Role });
+  const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'operator' as Role });
 
   const inputClasses = "p-2 rounded text-sm border border-slate-200 bg-white text-slate-900 font-bold outline-none focus:ring-2 focus:ring-purple-500/20";
 
@@ -22,14 +22,13 @@ export const UserModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           id: Date.now().toString(), 
           name: newUser.name, 
           username: newUser.username,
-          email: newUser.email, 
           password: newUser.password, 
           role: newUser.role 
       };
       const updated = [...users, u];
       StorageService.saveUsers(updated);
       setUsers(updated);
-      setNewUser({ name: '', username: '', email: '', password: '', role: 'operator' });
+      setNewUser({ name: '', username: '', password: '', role: 'operator' });
       
       window.dispatchEvent(new CustomEvent('app-notification', { 
           detail: { message: 'New user account created successfully!', type: 'success' } 
@@ -58,7 +57,6 @@ export const UserModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <input type="text" placeholder="Full Name" required value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className={inputClasses} />
                 <input type="text" placeholder="Username" required value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} className={inputClasses} />
-                <input type="email" placeholder="Email" required value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} className={inputClasses} />
                 <input type="text" placeholder="Password" required value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className={inputClasses} />
                 <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as Role})} className={inputClasses}>
                     <option value="operator">Operator</option>
@@ -82,7 +80,6 @@ export const UserModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                                 <div className="font-bold text-slate-700 dark:text-slate-200">{u.name}</div>
                                 <div className="text-[10px] flex items-center gap-2 mt-1">
                                     <span className="bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded font-mono">@{u.username}</span>
-                                    <span className="text-gray-400">{u.email}</span>
                                 </div>
                             </td>
                             <td className="p-3 text-center">
