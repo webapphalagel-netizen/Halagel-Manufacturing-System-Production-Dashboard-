@@ -6,6 +6,7 @@ import App from './App';
 // if the virtual module isn't present during local development or in non-Vite previews.
 // Added a cast to 'any' for import.meta to avoid TypeScript error 'Property env does not exist on type ImportMeta'
 if ((import.meta as any).env?.PROD) {
+  // @ts-expect-error - virtual module provided by vite-plugin-pwa
   import('virtual:pwa-register').then(({ registerSW }) => {
     registerSW({ immediate: true });
   }).catch(() => {
