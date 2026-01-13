@@ -122,11 +122,9 @@ const init = () => {
     localStorage.setItem(KEYS.OFF_DAYS, JSON.stringify(INITIAL_OFF_DAYS));
   }
   if (!localStorage.getItem(KEYS.PRODUCTION)) {
-    const seed = generateSeedProductionData().map((p: ProductionEntry) => ({
-      ...p,
-      status: p.actualQuantity >= p.planQuantity ? 'Completed' : 'In Progress'
-    }));
-    localStorage.setItem(KEYS.PRODUCTION, JSON.stringify(seed));
+    // START FIX: Remove dummy data seeding
+    localStorage.setItem(KEYS.PRODUCTION, JSON.stringify([]));
+    // END FIX
   }
   if (!localStorage.getItem(KEYS.LOGS)) {
     localStorage.setItem(KEYS.LOGS, JSON.stringify([]));
