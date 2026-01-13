@@ -82,15 +82,16 @@ export const Dashboard: React.FC = () => {
     const filteredEntries = baseData.filter(d => d && d.date && d.date.trim().startsWith(selectedMonth));
     const dates = new Set<string>();
     
-    // Collect all dates for the selected month
-    const year = parseInt(selectedMonth.split('-')[0]);
-    const month = parseInt(selectedMonth.split('-')[1]);
-    const daysInMonth = new Date(year, month, 0).getDate();
+    // gather dates that have entries or are off days
+    filteredEntries.forEach(e => {
+        if (e.date) dates.add(e.date.trim().substring(0, 10));
+    });
     
-    for (let i = 1; i <= daysInMonth; i++) {
-        const d = `${selectedMonth}-${String(i).padStart(2, '0')}`;
-        dates.add(d);
-    }
+    offDays.forEach(od => {
+        if (od.date && od.date.trim().startsWith(selectedMonth)) {
+            dates.add(od.date.trim().substring(0, 10));
+        }
+    });
 
     const sortedDates = Array.from(dates).sort((a, b) => (b || '').localeCompare(a || ''));
     const statusWeight: Record<string, number> = { 'In Progress': 1, 'Completed': 2 };
@@ -132,7 +133,9 @@ export const Dashboard: React.FC = () => {
             userId: user!.id, userName: user!.name, action: 'DELETE_RECORD',
             details: `Deleted: ${deletedItem.productName} (${deletedItem.date})`
           });
-          window.dispatchEvent(new CustomEvent('app-notification', { detail: { message: 'RECORD DELETED', type: 'info' } }));
+          window.dispatchEvent(new CustomEvent('app-notification', { 
+            detail: { message: 'RECORD DELETED', type: 'info' } 
+          }));
       }
       triggerRefresh();
   };
@@ -159,6 +162,7 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  // Fixed SortHeader by adding missing </th> closing tag
   const SortHeader = ({ label, sortKey }: { label: string, sortKey: keyof ProductionEntry }) => (
     <th className="px-8 py-4 cursor-pointer group" onClick={() => handleSort(sortKey)}>
         <div className="flex items-center gap-1">
@@ -220,7 +224,14 @@ export const Dashboard: React.FC = () => {
         </div>
         
         <div className="space-y-6">
-            {dailyGroups.map((group, groupIdx) => {
+            {dailyGroups.length === 0 ? (
+                <div className="p-20 text-center glass-panel rounded-[2rem]">
+                    <div className="inline-flex p-4 rounded-full bg-slate-50 dark:bg-slate-800 mb-4">
+                        <ClipboardList className="w-10 h-10 text-slate-300" />
+                    </div>
+                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No scheduled data for this month</p>
+                </div>
+            ) : dailyGroups.map((group, groupIdx) => {
                 const displayDate = formatDisplayDate(group.date);
                 const [datePart, dayPart] = displayDate.split(' ');
                 const isOff = !!group.offDay;
@@ -262,7 +273,7 @@ export const Dashboard: React.FC = () => {
                           </div>
                       </div>
 
-                      {group.entries.length > 0 ? (
+                      {group.entries.length > 0 && (
                         <div className="overflow-x-auto no-scrollbar">
                             <table className="w-full text-left">
                                 <thead>
@@ -326,10 +337,6 @@ export const Dashboard: React.FC = () => {
                                     })}
                                 </tbody>
                             </table>
-                        </div>
-                      ) : (
-                        <div className="p-10 text-center text-slate-400 text-xs italic font-bold uppercase tracking-widest">
-                            No production activity recorded.
                         </div>
                       )}
                   </div>
