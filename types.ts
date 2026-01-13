@@ -1,11 +1,10 @@
-
 export type Role = 'admin' | 'manager' | 'planner' | 'operator';
 
 export interface User {
   id: string;
   name: string;
   username: string;
-  email: string;
+  email?: string; // Optional since we're removing the requirement to provide it
   role: Role;
   password?: string; // In a real app, never store plain text. Used here for simulation.
   // Fix: Added missing avatar property used by the AvatarModal component
