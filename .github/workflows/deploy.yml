@@ -1,4 +1,3 @@
-
 name: Deploy to GitHub Pages
 
 on:
@@ -26,20 +25,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
           
       - name: Install dependencies
         run: npm install
         
-      - name: Clean Build Environment
-        run: |
-          rm -rf dist
-          rm -f public/CNAME
-        
       - name: Build
         run: npm run build
-        
-      - name: Ensure no CNAME in output
-        run: rm -f dist/CNAME
         
       - name: Setup Pages
         uses: actions/configure-pages@v4
