@@ -216,6 +216,13 @@ export const ProductionLog: React.FC = () => {
           </select>
         </div>
         <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1"><Filter className="w-3 h-3" /> Process Stage</label>
+          <select value={processType} onChange={e => setProcessType(e.target.value)} className="px-4 py-2.5 text-sm bg-gray-50 dark:bg-slate-900 rounded-xl border dark:border-slate-700 outline-none dark:text-white font-bold w-full md:w-auto">
+            <option value="All">All Processes</option>
+            {PROCESSES.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+        <div className="space-y-2">
           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1"><Filter className="w-3 h-3" /> Status</label>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-4 py-2.5 text-sm bg-gray-50 dark:bg-slate-900 rounded-xl border dark:border-slate-700 outline-none dark:text-white font-bold w-full md:w-auto">
             <option value="All">All Statuses</option>
