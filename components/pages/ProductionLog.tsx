@@ -3,14 +3,9 @@ import { StorageService } from '../../services/storageService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { CATEGORIES, PROCESSES } from '../../constants';
-import { ProductionEntry, ProductionStatus, OffDayType } from '../../types';
-import { Trash2, Download, Calendar, List, Filter, XCircle, Palmtree, BarChart2, MessageSquare, ArrowUpDown, Clock, CheckCircle, ShieldAlert, Coffee, Ban } from 'lucide-react';
-import { getTodayISO, isWeeklyRestDay, getWeeklyOffDayType } from '../../utils/dateUtils';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
-  ResponsiveContainer, LineChart, Line, AreaChart, Area, ComposedChart,
-  Cell
-} from 'recharts';
+import { ProductionEntry, ProductionStatus } from '../../types';
+import { Download, Calendar, List, Filter, XCircle, Palmtree, MessageSquare, ArrowUpDown, Clock, CheckCircle, Coffee, Ban } from 'lucide-react';
+import { getTodayISO, getWeeklyOffDayType } from '../../utils/dateUtils';
 
 type SortConfig = {
     key: keyof ProductionEntry;
@@ -18,8 +13,7 @@ type SortConfig = {
 } | null;
 
 export const ProductionLog: React.FC = () => {
-  const { user, hasPermission } = useAuth();
-  const { refreshKey, triggerRefresh, isDarkMode } = useDashboard();
+  const { refreshKey } = useDashboard();
   const [data, setData] = useState<ProductionEntry[]>([]);
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const offDays = useMemo(() => StorageService.getOffDays(), []);
@@ -97,35 +91,6 @@ export const ProductionLog: React.FC = () => {
     })).sort((a, b) => b.name.localeCompare(a.name)); 
   }, [filteredData]);
 
-  const monthlyChartSummaryData = useMemo(() => {
-    const groups: Record<string, { plan: number, actual: number }> = {};
-    filteredData.forEach(d => {
-      if (!d.date) return;
-      const monthKey = d.date.substring(0, 7);
-      if (!groups[monthKey]) groups[monthKey] = { plan: 0, actual: 0 };
-      groups[monthKey].plan += (d.planQuantity || 0);
-      groups[monthKey].actual += (d.actualQuantity || 0);
-    });
-    return Object.entries(groups).map(([month, stats]) => ({
-        name: month, plan: stats.plan, actual: stats.actual,
-        efficiency: stats.plan > 0 ? Number(((stats.actual / stats.plan) * 100).toFixed(1)) : 0
-    })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [filteredData]);
-
-  const chartDailyData = useMemo(() => {
-    const products: Record<string, { plan: number, actual: number }> = {};
-    filteredData.forEach(d => {
-        const key = d.productName;
-        if (!products[key]) products[key] = { plan: 0, actual: 0 };
-        products[key].plan += d.planQuantity;
-        products[key].actual += d.actualQuantity;
-    });
-    return Object.entries(products).map(([name, stats]) => ({
-        name: name.length > 15 ? name.substring(0, 15) + '...' : name,
-        fullName: name, plan: stats.plan, actual: stats.actual
-    })).sort((a, b) => b.plan - a.plan).slice(0, 10);
-  }, [filteredData]);
-
   const calculateEfficiency = (actual: number, plan: number) => plan > 0 ? ((actual / plan) * 100).toFixed(1) : '0';
 
   const resetFilters = () => {
@@ -182,7 +147,7 @@ export const ProductionLog: React.FC = () => {
   return (
     <div className="space-y-6 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h2 className="text-2xl font-black text-gray-800 dark:text-white">Production Analytics</h2>
+        <h2 className="text-2xl font-black text-gray-800 dark:text-white">Production Reports</h2>
         
         <div className="flex items-center gap-4">
           <div className="flex items-center bg-white dark:bg-slate-800 rounded-xl p-1.5 border border-gray-200 dark:border-slate-700 shadow-sm">
@@ -233,22 +198,6 @@ export const ProductionLog: React.FC = () => {
         <button onClick={resetFilters} className="flex items-center gap-1.5 px-4 py-2.5 text-[10px] font-black uppercase text-rose-500 hover:bg-rose-50 rounded-xl transition"><XCircle className="w-4 h-4" /> Reset</button>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-slate-700">
-        <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={viewMode === 'daily' ? chartDailyData : monthlyChartSummaryData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? '#334155' : '#f1f5f9'} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#94a3b8' }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#94a3b8' }} />
-                    <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#1e293b' : '#fff', borderRadius: '16px', border: 'none', fontSize: '12px', fontWeight: 'bold' }} />
-                    <Bar dataKey="plan" name="Target Plan" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={viewMode === 'daily' ? 30 : 50} />
-                    <Bar dataKey="actual" name="Total Actual" fill="#10b981" radius={[6, 6, 0, 0]} barSize={viewMode === 'daily' ? 30 : 50} />
-                    {viewMode === 'monthly' && <Line type="monotone" dataKey="efficiency" name="Eff. %" stroke="#f59e0b" strokeWidth={3} />}
-                </ComposedChart>
-            </ResponsiveContainer>
-        </div>
-      </div>
-
       <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-sm text-left border-collapse">
@@ -258,9 +207,9 @@ export const ProductionLog: React.FC = () => {
                     <SortHeader label="Date" sortKey="date" />
                     <SortHeader label="Dept" sortKey="category" align="center" />
                     <SortHeader label="Product" sortKey="productName" />
-                    <th className="px-8 py-5 text-right">Plan</th>
-                    <th className="px-8 py-5 text-right">Actual</th>
-                    <th className="px-8 py-5 text-right">Eff. %</th>
+                    <th className="px-8 py-5 text-right font-black uppercase text-[10px] tracking-widest">Plan</th>
+                    <th className="px-8 py-5 text-right font-black uppercase text-[10px] tracking-widest">Actual</th>
+                    <th className="px-8 py-5 text-right font-black uppercase text-[10px] tracking-widest">Eff. %</th>
                     <SortHeader label="Status" sortKey="status" align="center" />
                   </tr>
               ) : (
@@ -277,12 +226,8 @@ export const ProductionLog: React.FC = () => {
               {viewMode === 'daily' ? (
                   filteredData.map(entry => {
                     const eff = Number(calculateEfficiency(entry.actualQuantity || 0, entry.planQuantity || 0));
-                    
-                    // Priority 1: Manual Holiday check
                     const manualOffDay = offDays.find(od => od.date === entry.date);
-                    // Priority 2: Automatic Weekly check
                     const autoOffType = getWeeklyOffDayType(entry.date || '');
-                    
                     const labelType = manualOffDay?.type || autoOffType;
                     const labelDesc = manualOffDay?.description || (autoOffType === 'Rest Day' ? 'Weekly Rest' : 'Weekly Off');
 
@@ -306,9 +251,28 @@ export const ProductionLog: React.FC = () => {
                         <td className="px-8 py-6 text-center">
                           <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-900 text-slate-500 border dark:border-slate-800">{entry.category}</span>
                         </td>
-                        <td className="px-8 py-6"><div className="font-black text-slate-800 dark:text-white">{entry.productName}</div></td>
-                        <td className="px-8 py-6 text-right font-black font-mono text-slate-700 dark:text-slate-200">{(entry.planQuantity || 0).toLocaleString()}</td>
-                        <td className="px-8 py-6 text-right font-black font-mono text-emerald-500">{(entry.actualQuantity || 0).toLocaleString()}</td>
+                        <td className="px-8 py-6">
+                            <div className="font-black text-slate-800 dark:text-white leading-tight">{entry.productName}</div>
+                            <div className="text-[10px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mt-1 opacity-80">{entry.process}</div>
+                        </td>
+                        <td className="px-8 py-6 text-right font-black font-mono text-slate-700 dark:text-slate-200">
+                            <div>{(entry.planQuantity || 0).toLocaleString()} <span className="text-[10px] opacity-50 font-sans ml-1">{entry.unit}</span></div>
+                            {entry.planRemark && (
+                              <div className="flex items-center justify-end gap-1 mt-1 opacity-60">
+                                <MessageSquare className="w-2.5 h-2.5 text-indigo-500" />
+                                <span className="text-[9px] font-medium italic truncate max-w-[120px]">{entry.planRemark}</span>
+                              </div>
+                            )}
+                        </td>
+                        <td className="px-8 py-6 text-right font-black font-mono text-emerald-500">
+                            <div>{(entry.actualQuantity || 0).toLocaleString()} <span className="text-[10px] opacity-50 font-sans ml-1">{entry.unit}</span></div>
+                            {entry.actualRemark && (
+                              <div className="flex items-center justify-end gap-1 mt-1 opacity-60">
+                                <MessageSquare className="w-2.5 h-2.5 text-emerald-500" />
+                                <span className="text-[9px] font-medium italic truncate max-w-[120px]">{entry.actualRemark}</span>
+                              </div>
+                            )}
+                        </td>
                         <td className="px-8 py-6 text-right font-black">{eff}%</td>
                         <td className="px-8 py-6 text-center">
                             <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase border ${entry.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
