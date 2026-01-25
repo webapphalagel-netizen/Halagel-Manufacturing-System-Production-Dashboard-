@@ -1,10 +1,11 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { StorageService } from '../../services/storageService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { CATEGORIES, PROCESSES } from '../../constants';
 import { ProductionEntry, ProductionStatus } from '../../types';
-import { Download, Calendar, List, Filter, XCircle, Palmtree, MessageSquare, ArrowUpDown, Clock, CheckCircle, Coffee, Ban } from 'lucide-react';
+import { Download, Filter, XCircle, Palmtree, MessageSquare, ArrowUpDown, Clock, CheckCircle, Coffee, Ban } from 'lucide-react';
 import { getTodayISO, getWeeklyOffDayType } from '../../utils/dateUtils';
 
 type SortConfig = {
@@ -18,7 +19,6 @@ export const ProductionLog: React.FC = () => {
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const offDays = useMemo(() => StorageService.getOffDays(), []);
   
-  const [viewMode, setViewMode] = useState<'daily' | 'monthly'>('daily');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [category, setCategory] = useState('All');
   const [processType, setProcessType] = useState('All');
@@ -71,26 +71,6 @@ export const ProductionLog: React.FC = () => {
     return result;
   }, [data, dateRange, category, processType, statusFilter, sortConfig]);
 
-  const monthlyData = useMemo(() => {
-    const groups: Record<string, { plan: number, actual: number, count: number, month: string, process: string }> = {};
-    filteredData.forEach(d => {
-        if (!d.date) return;
-        const monthKey = d.date.substring(0, 7); 
-        const procKey = d.process || 'Other';
-        const compositeKey = `${monthKey}_${procKey}`;
-        if (!groups[compositeKey]) {
-            groups[compositeKey] = { plan: 0, actual: 0, count: 0, month: monthKey, process: procKey };
-        }
-        groups[compositeKey].plan += (d.planQuantity || 0);
-        groups[compositeKey].actual += (d.actualQuantity || 0);
-        groups[compositeKey].count++;
-    });
-    return Object.values(groups).map((stats) => ({
-        name: stats.month, process: stats.process, plan: stats.plan, actual: stats.actual,
-        efficiency: stats.plan > 0 ? Number(((stats.actual / stats.plan) * 100).toFixed(1)) : 0
-    })).sort((a, b) => b.name.localeCompare(a.name)); 
-  }, [filteredData]);
-
   const calculateEfficiency = (actual: number, plan: number) => plan > 0 ? ((actual / plan) * 100).toFixed(1) : '0';
 
   const resetFilters = () => {
@@ -102,24 +82,13 @@ export const ProductionLog: React.FC = () => {
   };
 
   const downloadCSV = () => {
-    let headers: string[] = [];
-    let rows: (string | number)[][] = [];
-    let filename = '';
-    const today = getTodayISO();
-
-    if (viewMode === 'daily') {
-        headers = ["Date", "Category", "Process", "Product", "Plan", "Actual", "Unit", "Efficiency %", "Batch No", "Manpower", "Status", "Plan Remark", "Actual Remark"];
-        rows = filteredData.map(d => [
-            d.date, d.category, d.process, `"${d.productName}"`, d.planQuantity || 0, d.actualQuantity || 0, d.unit || 'KG',
-            calculateEfficiency(d.actualQuantity || 0, d.planQuantity || 0), d.batchNo || '', Number(d.manpower || 0), d.status || 'In Progress', 
-            `"${(d.planRemark || '').replace(/"/g, '""')}"`, `"${(d.actualRemark || '').replace(/"/g, '""')}"`
-        ]);
-        filename = `production_log_daily_${today}.csv`;
-    } else {
-        headers = ["Month", "Process", "Total Plan", "Total Actual", "Overall Efficiency %"];
-        rows = monthlyData.map(m => [ m.name, m.process, m.plan || 0, m.actual || 0, (m.efficiency || 0).toFixed(2) ]);
-        filename = `production_summary_monthly_${today}.csv`;
-    }
+    const headers = ["Date", "Category", "Process", "Product", "Plan", "Actual", "Unit", "Efficiency %", "Batch No", "Manpower", "Status", "Plan Remark", "Actual Remark"];
+    const rows = filteredData.map(d => [
+        d.date, d.category, d.process, `"${d.productName}"`, d.planQuantity || 0, d.actualQuantity || 0, d.unit || 'KG',
+        calculateEfficiency(d.actualQuantity || 0, d.planQuantity || 0), d.batchNo || '', Number(d.manpower || 0), d.status || 'In Progress', 
+        `"${(d.planRemark || '').replace(/"/g, '""')}"`, `"${(d.actualRemark || '').replace(/"/g, '""')}"`
+    ]);
+    const filename = `production_log_${getTodayISO()}.csv`;
 
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
@@ -147,21 +116,17 @@ export const ProductionLog: React.FC = () => {
   return (
     <div className="space-y-6 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h2 className="text-2xl font-black text-gray-800 dark:text-white">Production Reports</h2>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex items-center bg-white dark:bg-slate-800 rounded-xl p-1.5 border border-gray-200 dark:border-slate-700 shadow-sm">
-              <button onClick={() => setViewMode('daily')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition ${viewMode === 'daily' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500'}`}><List className="w-4 h-4" /> Daily</button>
-              <button onClick={() => setViewMode('monthly')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition ${viewMode === 'monthly' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500'}`}><Calendar className="w-4 h-4" /> Monthly</button>
-          </div>
-
-          <button 
-            onClick={downloadCSV} 
-            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition shadow-lg shadow-emerald-500/20"
-          >
-            <Download className="w-4 h-4" /> Export Report
-          </button>
+        <div>
+          <h2 className="text-2xl font-black text-gray-800 dark:text-white">Production Log</h2>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Detailed operational history</p>
         </div>
+        
+        <button 
+          onClick={downloadCSV} 
+          className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition shadow-lg shadow-emerald-500/20"
+        >
+          <Download className="w-4 h-4" /> Export Report
+        </button>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 flex flex-wrap gap-6 items-end">
@@ -202,97 +167,84 @@ export const ProductionLog: React.FC = () => {
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-sm text-left border-collapse">
             <thead className="bg-gray-50/50 dark:bg-slate-900/50 text-slate-400 font-black uppercase text-[10px] tracking-widest border-b dark:border-slate-700">
-              {viewMode === 'daily' ? (
-                  <tr>
-                    <SortHeader label="Date" sortKey="date" />
+                <tr>
+                    <SortHeader label="Date / Status" sortKey="date" />
                     <SortHeader label="Dept" sortKey="category" align="center" />
                     <SortHeader label="Product" sortKey="productName" />
                     <th className="px-8 py-5 text-right font-black uppercase text-[10px] tracking-widest">Plan</th>
                     <th className="px-8 py-5 text-right font-black uppercase text-[10px] tracking-widest">Actual</th>
+                    <th className="px-8 py-5 text-center font-black uppercase text-[10px] tracking-widest">Unit</th>
                     <th className="px-8 py-5 text-right font-black uppercase text-[10px] tracking-widest">Eff. %</th>
-                    <SortHeader label="Status" sortKey="status" align="center" />
-                  </tr>
-              ) : (
-                  <tr>
-                    <th className="px-8 py-5">Month</th>
-                    <th className="px-8 py-5">Process</th>
-                    <th className="px-8 py-5 text-right">Plan</th>
-                    <th className="px-8 py-5 text-right">Actual</th>
-                    <th className="px-8 py-5 text-right">Efficiency %</th>
-                  </tr>
-              )}
+                    <SortHeader label="Batch No" sortKey="batchNo" align="center" />
+                </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
-              {viewMode === 'daily' ? (
-                  filteredData.map(entry => {
-                    const eff = Number(calculateEfficiency(entry.actualQuantity || 0, entry.planQuantity || 0));
-                    const manualOffDay = offDays.find(od => od.date === entry.date);
-                    const autoOffType = getWeeklyOffDayType(entry.date || '');
-                    const labelType = manualOffDay?.type || autoOffType;
-                    const labelDesc = manualOffDay?.description || (autoOffType === 'Rest Day' ? 'Weekly Rest' : 'Weekly Off');
+                {filteredData.map(entry => {
+                const eff = Number(calculateEfficiency(entry.actualQuantity || 0, entry.planQuantity || 0));
+                const manualOffDay = offDays.find(od => od.date === entry.date);
+                const autoOffType = getWeeklyOffDayType(entry.date || '');
+                const labelType = manualOffDay?.type || autoOffType;
+                const labelDesc = manualOffDay?.description || (autoOffType === 'Rest Day' ? 'Weekly Rest' : 'Weekly Off');
 
-                    return (
-                      <tr key={entry.id} className={`hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors ${labelType ? 'bg-amber-50/10' : ''}`}>
-                        <td className="px-8 py-6">
-                            <div className="font-black text-slate-800 dark:text-white font-mono text-xs">{entry.date}</div>
-                            {labelType ? (
-                              <span className={`flex items-center gap-1.5 text-[9px] font-black uppercase ${
-                                labelType === 'Public Holiday' ? 'text-rose-500' : 
-                                labelType === 'Rest Day' ? 'text-indigo-500' : 'text-amber-500'
-                              }`}>
-                                {labelType === 'Public Holiday' ? <Palmtree className="w-3 h-3" /> : 
-                                 labelType === 'Rest Day' ? <Coffee className="w-3 h-3" /> : <Ban className="w-3 h-3" />}
-                                {labelDesc}
-                              </span>
-                            ) : (
-                              <span className="text-[9px] font-black uppercase text-slate-300">Operational</span>
-                            )}
-                        </td>
-                        <td className="px-8 py-6 text-center">
-                          <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-900 text-slate-500 border dark:border-slate-800">{entry.category}</span>
-                        </td>
-                        <td className="px-8 py-6">
-                            <div className="font-black text-slate-800 dark:text-white leading-tight">{entry.productName}</div>
-                            <div className="text-[10px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mt-1 opacity-80">{entry.process}</div>
-                        </td>
-                        <td className="px-8 py-6 text-right font-black font-mono text-slate-700 dark:text-slate-200">
-                            <div>{(entry.planQuantity || 0).toLocaleString()} <span className="text-[10px] opacity-50 font-sans ml-1">{entry.unit}</span></div>
-                            {entry.planRemark && (
-                              <div className="flex items-center justify-end gap-1 mt-1 opacity-60">
-                                <MessageSquare className="w-2.5 h-2.5 text-indigo-500" />
-                                <span className="text-[9px] font-medium italic truncate max-w-[120px]">{entry.planRemark}</span>
-                              </div>
-                            )}
-                        </td>
-                        <td className="px-8 py-6 text-right font-black font-mono text-emerald-500">
-                            <div>{(entry.actualQuantity || 0).toLocaleString()} <span className="text-[10px] opacity-50 font-sans ml-1">{entry.unit}</span></div>
-                            {entry.actualRemark && (
-                              <div className="flex items-center justify-end gap-1 mt-1 opacity-60">
-                                <MessageSquare className="w-2.5 h-2.5 text-emerald-500" />
-                                <span className="text-[9px] font-medium italic truncate max-w-[120px]">{entry.actualRemark}</span>
-                              </div>
-                            )}
-                        </td>
-                        <td className="px-8 py-6 text-right font-black">{eff}%</td>
-                        <td className="px-8 py-6 text-center">
-                            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase border ${entry.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                                {entry.status === 'Completed' ? <CheckCircle className="w-3 h-3" /> : <Clock className="w-3 h-3 animate-pulse" />} {entry.status}
+                return (
+                    <tr key={entry.id} className={`hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors ${labelType ? 'bg-amber-50/10' : ''}`}>
+                    <td className="px-8 py-6">
+                        <div className="font-black text-slate-800 dark:text-white font-mono text-xs mb-1.5">{entry.date}</div>
+                        {labelType ? (
+                            <span className={`flex items-center gap-1.5 text-[9px] font-black uppercase ${
+                            labelType === 'Public Holiday' ? 'text-rose-500' : 
+                            labelType === 'Rest Day' ? 'text-indigo-500' : 'text-amber-500'
+                            }`}>
+                            {labelType === 'Public Holiday' ? <Palmtree className="w-3 h-3" /> : 
+                                labelType === 'Rest Day' ? <Coffee className="w-3 h-3" /> : <Ban className="w-3 h-3" />}
+                            {labelDesc}
+                            </span>
+                        ) : (
+                            <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[8px] font-black uppercase border ${entry.status === 'Completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>
+                                {entry.status === 'Completed' ? <CheckCircle className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5 animate-pulse" />} 
+                                {entry.status}
                             </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-              ) : (
-                  monthlyData.map(m => (
-                      <tr key={`${m.name}-${m.process}`} className="hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition">
-                          <td className="px-8 py-6 font-black text-slate-800 dark:text-white text-lg">{m.name}</td>
-                          <td className="px-8 py-6"><span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100">{m.process}</span></td>
-                          <td className="px-8 py-6 text-right font-mono font-black text-slate-700 dark:text-slate-200">{(m.plan || 0).toLocaleString()}</td>
-                          <td className="px-8 py-6 text-right font-mono font-black text-emerald-500">{(m.actual || 0).toLocaleString()}</td>
-                          <td className="px-8 py-6 text-right font-black"><div className={`inline-flex px-4 py-2 rounded-2xl font-black text-base ${m.efficiency >= 85 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>{m.efficiency.toFixed(1)}%</div></td>
-                      </tr>
-                  ))
-              )}
+                        )}
+                    </td>
+                    <td className="px-8 py-6 text-center">
+                        <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-900 text-slate-500 border dark:border-slate-800">{entry.category}</span>
+                    </td>
+                    <td className="px-8 py-6">
+                        <div className="font-black text-slate-800 dark:text-white leading-tight mb-1">{entry.productName}</div>
+                        <div className="text-[9px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest">{entry.process}</div>
+                    </td>
+                    <td className="px-8 py-6 text-right font-black font-mono text-slate-700 dark:text-slate-200">
+                        <div>{(entry.planQuantity || 0).toLocaleString()}</div>
+                        {entry.planRemark && (
+                            <div className="flex items-center justify-end gap-1 mt-1 opacity-60">
+                            <MessageSquare className="w-2.5 h-2.5 text-indigo-500" />
+                            <span className="text-[9px] font-medium italic truncate max-w-[120px]">{entry.planRemark}</span>
+                            </div>
+                        )}
+                    </td>
+                    <td className="px-8 py-6 text-right font-black font-mono text-emerald-500">
+                        <div>{(entry.actualQuantity || 0).toLocaleString()}</div>
+                        {entry.actualRemark && (
+                            <div className="flex items-center justify-end gap-1 mt-1 opacity-60">
+                            <MessageSquare className="w-2.5 h-2.5 text-emerald-500" />
+                            <span className="text-[9px] font-medium italic truncate max-w-[120px]">{entry.actualRemark}</span>
+                            </div>
+                        )}
+                    </td>
+                    <td className="px-8 py-6 text-center">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{entry.unit || 'KG'}</span>
+                    </td>
+                    <td className="px-8 py-6 text-right font-black">
+                        <span className={`${eff >= 90 ? 'text-emerald-500' : eff >= 70 ? 'text-amber-500' : 'text-rose-500'}`}>{eff}%</span>
+                    </td>
+                    <td className="px-8 py-6 text-center">
+                        <span className="text-[11px] font-black text-slate-600 dark:text-slate-300 font-mono uppercase">
+                            {entry.batchNo || '---'}
+                        </span>
+                    </td>
+                    </tr>
+                );
+                })}
             </tbody>
           </table>
         </div>
